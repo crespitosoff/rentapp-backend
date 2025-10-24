@@ -1,3 +1,5 @@
+require('dotenv').config(); // Carga las variables de .env en process.env
+
 // Importa la librería Express.
 const express = require('express');
 // Importa el archivo de rutas de usuario que acabamos de crear.

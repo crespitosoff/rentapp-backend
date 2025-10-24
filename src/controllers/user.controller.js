@@ -148,7 +148,7 @@ const loginUser = async (req, res) => {
     // 3. Si la contraseña es correcta, crear un Token (JWT)
     const token = jwt.sign(
       { userId: user.usuario_id, rol: user.rol }, // 'payload' - ¿Qué datos guardamos en el token?
-      'MI_CLAVE_SUPER_SECRETA_123', // 'secret' - Una clave secreta para firmar el token
+      process.env.JWT_SECRET, // 'secret' - Una clave secreta para firmar el token
       { expiresIn: '1h' } // 'options' - El token expirará en 1 hora
     );
 
