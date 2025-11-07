@@ -5,7 +5,12 @@ const { Pool } = require('pg');
 // Crea una nueva instancia de Pool con los datos de conexión.
 // Tu aplicación usará este 'pool' para enviar consultas a PostgreSQL.
 const pool = new Pool({
-connectionString: process.env.DATABASE_URL,
+  user: 'postgres.zrhcddrhgcqnhvxjavug',                  // El usuario por defecto de PostgreSQL
+  host: 'aws-1-sa-east-1.pooler.supabase.com',                 // La dirección del servidor de la base de datos (tu máquina)
+  database: 'postgres',            // El nombre de la base de datos que creamos
+  password: process.env.DATABASE_URL,  // La clave por defecto de PostgreSQL
+  port: 6543,                        // El puerto por defecto de PostgreSQL
+  // AÑADIDO: Configuración para requerir una conexión segura (SSL)
   ssl: {
     rejectUnauthorized: false
   }
