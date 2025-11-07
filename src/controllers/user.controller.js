@@ -129,36 +129,60 @@ const deleteUser = async (req, res) => {
 
 // --- NUEVA FUNCIÓN DE LOGIN ---
 const loginUser = async (req, res) => {
-  try {
-    const { email, password } = req.body;
+    try {
+        const { email, password } = req.body;
 
-    // 1. Buscar al usuario por su email
-    const result = await pool.query('SELECT * FROM usuarios WHERE email = $1', [email]);
-    if (result.rows.length === 0) {
-      return res.status(400).json({ message: "Credenciales inválidas" });
+        // 1. Buscar al usuario por su email
+        const result = await pool.query('SELECT * FROM usuarios WHERE email = $1', [email]);
+        if (result.rows.length === 0) {
+            return res.status(400).json({ message: "Credenciales inválidas" });
+        }
+        const user = result.rows[0];
+
+        // 2. Comparar la contraseña enviada con el hash guardado
+        const isMatch = await bcrypt.compare(password, user.password_hash);
+        if (!isMatch) {
+            return res.status(400).json({ message: "Credenciales inválidas" });
+        }
+
+        if (passwordMatch) {
+            // 3. Si la contraseña es correcta, crear un Token (JWT)
+            const payload = {
+                userId: user.usuario_id,
+                rol: user.rol // <-- ¡YA TENÍAMOS EL ROL EN EL TOKEN! Perfecto.
+            };
+
+            const token = jwt.sign(
+                payload,
+                process.env.JWT_SECRET, // <-- Usando la variable de entorno (¡excelente!)
+                { expiresIn: '1h' }
+            );
+
+            // 4. Enviar el token Y EL ROL al cliente
+            res.json({
+                token: token,
+                rol: user.rol, // <-- AÑADE ESTA LÍNEA
+                nombre: user.primer_nombre // <-- (Opcional, pero útil para un "Hola, Crespo")
+            });
+
+        } else {
+            // ... (tu manejo de error de contraseña)
+        }
+
+        // 3. Si la contraseña es correcta, crear un Token (JWT)
+        const token = jwt.sign(
+            { userId: user.usuario_id, rol: user.rol }, // 'payload' - ¿Qué datos guardamos en el token?
+            process.env.JWT_SECRET, // 'secret' - Una clave secreta para firmar el token
+            { expiresIn: '1h' } // 'options' - El token expirará en 1 hora
+        );
+
+        // 4. Enviar el token de vuelta al usuario
+        res.json({ token, message: "Inicio de sesión exitoso" });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Error en el servidor');
     }
-    const user = result.rows[0];
-
-    // 2. Comparar la contraseña enviada con el hash guardado
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Credenciales inválidas" });
-    }
-
-    // 3. Si la contraseña es correcta, crear un Token (JWT)
-    const token = jwt.sign(
-      { userId: user.usuario_id, rol: user.rol }, // 'payload' - ¿Qué datos guardamos en el token?
-      'MI_CLAVE_SUPER_SECRETA_123', // 'secret' - Una clave secreta para firmar el token
-      { expiresIn: '1h' } // 'options' - El token expirará en 1 hora
-    );
-
-    // 4. Enviar el token de vuelta al usuario
-    res.json({ token, message: "Inicio de sesión exitoso" });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Error en el servidor');
-  }
 };
 
 // Exporta las funciones para que puedan ser usadas en el archivo de rutas.

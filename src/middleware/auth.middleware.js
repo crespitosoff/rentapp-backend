@@ -10,7 +10,7 @@ const authenticateToken = (req, res, next) => {
   }
 
   // Verifica el token
-  jwt.verify(token, 'MI_CLAVE_SUPER_SECRETA_123', (err, user) => {
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) {
       return res.sendStatus(403); // Prohibido (el token no es válido)
     }
