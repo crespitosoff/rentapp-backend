@@ -141,43 +141,30 @@ const loginUser = async (req, res) => {
 
         // 2. Comparar la contraseña enviada con el hash guardado
         const isMatch = await bcrypt.compare(password, user.password_hash);
-        if (!isMatch) {
-            return res.status(400).json({ message: "Credenciales inválidas" });
-        }
 
-        if (passwordMatch) {
+        if (isMatch) {
             // 3. Si la contraseña es correcta, crear un Token (JWT)
             const payload = {
                 userId: user.usuario_id,
-                rol: user.rol // <-- ¡YA TENÍAMOS EL ROL EN EL TOKEN! Perfecto.
+                rol: user.rol // <-- Rol en el token (RBAC)
             };
 
             const token = jwt.sign(
                 payload,
-                process.env.JWT_SECRET, // <-- Usando la variable de entorno (¡excelente!)
+                process.env.JWT_SECRET,
                 { expiresIn: '1h' }
             );
 
             // 4. Enviar el token Y EL ROL al cliente
             res.json({
                 token: token,
-                rol: user.rol, // <-- AÑADE ESTA LÍNEA
+                rol: user.rol, // Control de Acceso Basado en Roles (RBAC)
                 nombre: user.primer_nombre // <-- (Opcional, pero útil para un "Hola, Crespo")
             });
 
         } else {
-            // ... (tu manejo de error de contraseña)
+            return res.status(400).json({ message: "Credenciales inválidas" });
         }
-
-        // 3. Si la contraseña es correcta, crear un Token (JWT)
-        const token = jwt.sign(
-            { userId: user.usuario_id, rol: user.rol }, // 'payload' - ¿Qué datos guardamos en el token?
-            process.env.JWT_SECRET, // 'secret' - Una clave secreta para firmar el token
-            { expiresIn: '1h' } // 'options' - El token expirará en 1 hora
-        );
-
-        // 4. Enviar el token de vuelta al usuario
-        res.json({ token, message: "Inicio de sesión exitoso" });
 
     } catch (err) {
         console.error(err);
