@@ -57,11 +57,19 @@ const createUser = async (req, res) => {
         // Obtenemos los datos del nuevo usuario del "cuerpo" (body) de la petición.
         const { primer_nombre, primer_apellido, email, password, rol } = req.body;
 
+        // --- ÚNICO CAMBIO (VALIDACIÓN DE SEGURIDAD) ---
+        // Nos aseguramos de que el rol sea uno de los dos permitidos
+        if (!['arrendatario', 'arrendador'].includes(rol)) {
+            return res.status(400).json({ message: 'El rol no es válido.' });
+        }
+        // --- FIN DEL CAMBIO ---
+
         // 1. Hashear la contraseña
         // El '10' es el "costo" o "salt rounds", un factor de complejidad. 10 es un buen estándar.
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // 2. Ejecutar la consulta SQL con la contraseña ya hasheada
+        // (Tu nombre de columna 'password_hash' es correcto)
         const result = await pool.query(
             'INSERT INTO usuarios (primer_nombre, primer_apellido, email, password_hash, rol) VALUES ($1, $2, $3, $4, $5) RETURNING *',
             [primer_nombre, primer_apellido, email, hashedPassword, rol] // <-- Usamos la contraseña hasheada
@@ -74,6 +82,10 @@ const createUser = async (req, res) => {
         res.status(201).json(result.rows[0]);
     } catch (err) {
         console.error(err);
+        // Manejo de error específico para email duplicado (si el código de error es '23505')
+        if (err.code === '23505') {
+            return res.status(400).json({ message: 'El correo electrónico ya está registrado.' });
+        }   
         res.status(500).send('Error al crear el usuario');
     }
 };
@@ -140,6 +152,7 @@ const loginUser = async (req, res) => {
         const user = result.rows[0];
 
         // 2. Comparar la contraseña enviada con el hash guardado
+        // (Tu variable 'isMatch' y 'user.password_hash' son correctas)
         const isMatch = await bcrypt.compare(password, user.password_hash);
 
         if (isMatch) {
