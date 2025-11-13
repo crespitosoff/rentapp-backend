@@ -4,10 +4,11 @@ const {
     getInmuebleById,
     createInmueble,
     updateInmueble,
-    deleteInmueble
+    deleteInmueble,
+    getMyInmuebles // <-- 1. Importamos la nueva función
 } = require('../controllers/inmueble.controller');
 
-// 1. Importamos nuestros guardias de seguridad
+// Importamos nuestros guardias de seguridad
 const authMiddleware = require('../middleware/auth.middleware');
 const checkRole = require('../middleware/roleCheck');
 
@@ -16,6 +17,17 @@ const router = Router();
 // --- RUTAS PÚBLICAS ---
 // Cualquiera puede ver los inmuebles
 router.get('/inmuebles', getAllInmuebles);
+
+// --- NUEVA RUTA PROTEGIDA (Arrendador) ---
+// (Debe ir ANTES de /:id para que no haya conflicto)
+router.get(
+    '/inmuebles/propios', // <-- 2. Nueva ruta
+    authMiddleware,
+    checkRole('arrendador'),
+    getMyInmuebles
+);
+
+// --- RUTA PÚBLICA (debe ir DESPUÉS de /propios) ---
 router.get('/inmuebles/:id', getInmuebleById);
 
 
