@@ -27,6 +27,28 @@ const getInmuebleById = async (req, res) => {
   }
 };
 
+// --- NUEVA FUNCIÓN: OBTENER MIS INMUEBLES ---
+const getMyInmuebles = async (req, res) => {
+  try {
+    // 1. Obtenemos el ID del arrendador desde el token (que ya fue verificado)
+    const arrendador_id = req.user.userId;
+
+    // 2. Buscamos solo los inmuebles que le pertenecen
+    const result = await pool.query(
+      'SELECT * FROM inmuebles WHERE arrendador_id = $1',
+      [arrendador_id]
+    );
+
+    // 3. Devolvemos la lista (puede estar vacía, y eso está bien)
+    res.json(result.rows);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al obtener mis inmuebles' });
+  }
+};
+// --- FIN DE LA NUEVA FUNCIÓN ---
+
 // --- CREAR UN NUEVO INMUEBLE (¡ARREGLO DE SEGURIDAD!) ---
 const createInmueble = async (req, res) => {
   try {
@@ -106,4 +128,5 @@ module.exports = {
   createInmueble,
   updateInmueble,
   deleteInmueble,
+  getMyInmuebles, // <-- Exportamos la nueva función
 };
