@@ -1,28 +1,22 @@
-/**
- * Crea un middleware que verifica si el rol del usuario (del token)
- * coincide con el rol permitido.
- * @param {string} allowedRole - El rol que se permite ('arrendador', 'arrendatario')
- */
 const checkRole = (allowedRole) => {
+    return (req, res, next) => {
 
-  // Esta es la función de middleware real que usará Express
-  return (req, res, next) => {
+        // --- ¡AQUÍ ESTÁ EL ARREGLO! ---
+        // Buscamos en 'req.user' (como lo define tu authMiddleware)
+        if (!req.user) {
+            return res.status(500).json({ message: 'Error de autenticación. Faltan datos del usuario.' });
+        }
 
-    // Asumimos que authMiddleware ya corrió y puso 'req.usuario'
-    if (!req.usuario) {
-      return res.status(500).send('Error de autenticación. Faltan datos del usuario.');
-    }
+        // --- ¡Y AQUÍ! ---
+        // Comparamos el rol del TOKEN (req.user.rol)
+        if (req.user.rol !== allowedRole) {
+            return res.status(403).json({ message: 'Acceso Prohibido: No tienes los permisos necesarios.' });
+        }
+        // --- FIN DEL ARREGLO ---
 
-    // ¡LA VERIFICACIÓN REAL!
-    // Comparamos el rol del TOKEN (req.usuario.rol) con el rol que requiere esta ruta
-    if (req.usuario.rol !== allowedRole) {
-      // Si no coincide, ¡acceso prohibido!
-      return res.status(403).send('Acceso Prohibido: No tienes los permisos necesarios.');
-    }
-
-    // Si coincide, ¡adelante! Pasa al siguiente middleware o al controlador
-    next();
-  };
+        // Si coincide, ¡adelante!
+        next();
+    };
 };
 
 module.exports = checkRole;

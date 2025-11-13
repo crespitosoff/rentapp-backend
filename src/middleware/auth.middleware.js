@@ -1,22 +1,21 @@
 const jwt = require('jsonwebtoken');
 
 const authenticateToken = (req, res, next) => {
-  // Busca el token en el header 'Authorization'
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Formato "Bearer TOKEN"
+  const token = authHeader && authHeader.split(' ')[1];
 
   if (token == null) {
-    return res.sendStatus(401); // No autorizado (no hay token)
+    // CAMBIO: Enviar JSON para que el frontend no se rompa
+    return res.status(401).json({ message: 'Acceso denegado. No se proveyó token.' });
   }
 
-  // Verifica el token
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) {
-      return res.sendStatus(403); // Prohibido (el token no es válido)
+      // CAMBIO: Enviar JSON
+      return res.status(403).json({ message: 'Token no válido o expirado.' });
     }
 
-    // Si el token es válido, guarda los datos del usuario en la petición
-    // y permite que continúe hacia la ruta.
+    // ¡Tu variable es 'req.user'! Esto es lo correcto.
     req.user = user;
     next();
   });

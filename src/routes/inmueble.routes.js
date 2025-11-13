@@ -8,7 +8,7 @@ const {
 } = require('../controllers/inmueble.controller');
 
 // 1. Importamos nuestros guardias de seguridad
-const authMiddleware = require('../middleware/authMiddleware');
+const authMiddleware = require('../middleware/auth.middleware');
 const checkRole = require('../middleware/roleCheck');
 
 const router = Router();
