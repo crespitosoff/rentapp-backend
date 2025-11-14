@@ -5,54 +5,59 @@ const {
     createInmueble,
     updateInmueble,
     deleteInmueble,
-    getMyInmuebles // <-- 1. Importamos la nueva función
+    getMyInmuebles
 } = require('../controllers/inmueble.controller');
 
 // Importamos nuestros guardias de seguridad
 const authMiddleware = require('../middleware/auth.middleware');
 const checkRole = require('../middleware/roleCheck');
 
+// --- NUEVO: Configuración de Multer ---
+const multer = require('multer');
+// 'memoryStorage' guarda el archivo temporalmente en la RAM
+// Es perfecto para pasarlo directamente a Supabase
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+// --- FIN NUEVO ---
+
 const router = Router();
 
 // --- RUTAS PÚBLICAS ---
-// Cualquiera puede ver los inmuebles
 router.get('/inmuebles', getAllInmuebles);
 
-// --- NUEVA RUTA PROTEGIDA (Arrendador) ---
-// (Debe ir ANTES de /:id para que no haya conflicto)
+// --- RUTA PROTEGIDA (Arrendador) ---
 router.get(
-    '/inmuebles/propios', // <-- 2. Nueva ruta
+    '/inmuebles/propios',
     authMiddleware,
     checkRole('arrendador'),
     getMyInmuebles
 );
 
-// --- RUTA PÚBLICA (debe ir DESPUÉS de /propios) ---
+// --- RUTA PÚBLICA ---
 router.get('/inmuebles/:id', getInmuebleById);
-
 
 // --- RUTAS PROTEGIDAS (Solo Arrendador) ---
 
 // 2. Ruta para crear un nuevo inmueble
-// Solo usuarios conectados (authMiddleware) Y que sean 'arrendador' (checkRole)
 router.post(
     '/inmuebles',
     authMiddleware,
     checkRole('arrendador'),
+    upload.single('imagen'), // <-- NUEVO: Middleware de Multer. 'imagen' es el nombre del campo del formulario
     createInmueble
 );
 
 // 3. Ruta para actualizar un inmueble por ID
-// Solo usuarios conectados Y que sean 'arrendador'
 router.put(
     '/inmuebles/:id',
     authMiddleware,
     checkRole('arrendador'),
+    // (Por ahora no añadimos subida de imagen al actualizar,
+    // eso es una lógica más compleja para después)
     updateInmueble
 );
 
 // 4. Ruta para eliminar un inmueble por ID
-// Solo usuarios conectados Y que sean 'arrendador'
 router.delete(
     '/inmuebles/:id',
     authMiddleware,
