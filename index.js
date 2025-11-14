@@ -6,6 +6,9 @@ const express = require('express');
 const userRoutes = require('./src/routes/user.routes');
 // Importa el archivo de rutas de inmuebles que acabamos de crear.
 const inmuebleRoutes = require('./src/routes/inmueble.routes');
+// --- NUEVO ---
+const favoritoRoutes = require('./src/routes/favorito.routes.js');
+// --- FIN NUEVO ---
 // Importa el middleware 'cors' para permitir peticiones de CORS.
 const cors = require('cors');
 
@@ -30,6 +33,9 @@ app.get('/', (req, res) => {
 // comenzarán con '/api'. Por ejemplo: '/api/usuarios'.
 app.use('/api', userRoutes);
 app.use('/api', inmuebleRoutes);
+// --- NUEVO ---
+app.use('/api', favoritoRoutes); // Añadimos las rutas de favoritos
+// --- FIN NUEVO ---
 
 // ----- INICIAR SERVIDOR -----
 // Pone al servidor a escuchar peticiones en el puerto definido.
