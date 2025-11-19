@@ -58,8 +58,18 @@ const getMyFavoritos = async (req, res) => {
         const usuario_id = req.user.userId;
 
         // Hacemos un JOIN para obtener la *información completa* de los inmuebles
-        // que el usuario ha guardado.
-        const query = ` SELECT i.* FROM inmuebles i JOIN favoritos f ON i.inmueble_id = f.inmueble_id WHERE f.usuario_id = $1 `;
+        // que el usuario ha guardado, Y AHORA TAMBIÉN LA IMAGEN.
+        const query = `
+            SELECT i.*, fimg.url_imagen
+            FROM inmuebles i
+            JOIN favoritos f ON i.inmueble_id = f.inmueble_id
+            LEFT JOIN (
+                SELECT DISTINCT ON (inmueble_id) inmueble_id, url_imagen
+                FROM fotos_inmueble
+                ORDER BY inmueble_id, foto_id 
+            ) AS fimg ON i.inmueble_id = fimg.inmueble_id
+            WHERE f.usuario_id = $1
+        `;
 
         const result = await pool.query(query, [usuario_id]);
 
