@@ -5,11 +5,31 @@ const supabase = require('../services/supabase');
 // --- OBTENER TODOS LOS INMUEBLES (Modificado) ---
 const getAllInmuebles = async (req, res) => {
   try {
-    // Esta consulta AHORA une la tabla 'inmuebles' con la 'fotos_inmueble'
-    // para obtener la PRIMERA foto de cada inmueble.
-    const query = `SELECT i.*, f.url_imagen FROM inmuebles i LEFT JOIN ( SELECT DISTINCT ON (inmueble_id) inmueble_id, url_imagen FROM fotos_inmueble ORDER BY inmueble_id, foto_id ) AS f ON i.inmueble_id = f.inmueble_id ORDER BY i.fecha_publicacion DESC `;
-    const result = await pool.query(query);
+    // 1. Obtenemos el término de búsqueda de la URL (ej: ?q=apartamento)
+    const { q } = req.query;
+
+    // Base de la consulta (con el JOIN de fotos que ya teníamos)
+    let queryText = `SELECT i.*, f.url_imagen
+    FROM inmuebles i
+    LEFT JOIN (SELECT DISTINCT ON (inmueble_id) inmueble_id, url_imagen FROM fotos_inmueble ORDER BY inmueble_id, foto_id) AS f ON i.inmueble_id = f.inmueble_id
+    `;
+
+    const queryParams = [];
+
+    // 2. Si hay búsqueda, agregamos el WHERE
+    if (q) {
+      // Usamos ILIKE para búsqueda insensible a mayúsculas/minúsculas
+      // Buscamos en título O en dirección O en ciudad (si la tienes)
+      queryText += ` WHERE (i.titulo ILIKE $1 OR i.direccion ILIKE $1) `;
+      queryParams.push(`%${q}%`); // Agregamos los comodines % para buscar parciales
+    }
+
+    // 3. Ordenamos: Primero los destacados, luego por fecha
+    queryText += ` ORDER BY i.es_destacado DESC, i.fecha_publicacion DESC`;
+
+    const result = await pool.query(queryText, queryParams);
     res.json(result.rows);
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error al obtener los inmuebles' });
