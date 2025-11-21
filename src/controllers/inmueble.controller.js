@@ -2,30 +2,54 @@ const pool = require('../services/db');
 // --- NUEVO: Importamos el cliente de Supabase ---
 const supabase = require('../services/supabase');
 
-// --- OBTENER TODOS LOS INMUEBLES (Modificado) ---
 const getAllInmuebles = async (req, res) => {
   try {
-    // 1. Obtenemos el término de búsqueda de la URL (ej: ?q=apartamento)
-    const { q } = req.query;
+    // 1. Obtenemos todos los parámetros posibles
+    const { q, minPrice, maxPrice, sort } = req.query;
 
-    // Base de la consulta (con el JOIN de fotos que ya teníamos)
-    let queryText = `SELECT i.*, f.url_imagen
-    FROM inmuebles i
-    LEFT JOIN (SELECT DISTINCT ON (inmueble_id) inmueble_id, url_imagen FROM fotos_inmueble ORDER BY inmueble_id, foto_id) AS f ON i.inmueble_id = f.inmueble_id
-    `;
+    // Base de la consulta
+    let queryText = ` SELECT i.*, f.url_imagen FROM inmuebles i
+    LEFT JOIN ( SELECT DISTINCT ON (inmueble_id) inmueble_id, url_imagen FROM fotos_inmueble
+    ORDER BY inmueble_id, foto_id ) AS f ON i.inmueble_id = f.inmueble_id`;
 
     const queryParams = [];
+    const conditions = []; // Array para guardar las condiciones WHERE
 
-    // 2. Si hay búsqueda, agregamos el WHERE
+    // 2. Construimos las condiciones dinámicamente
     if (q) {
-      // Usamos ILIKE para búsqueda insensible a mayúsculas/minúsculas
-      // Buscamos en título O en dirección O en ciudad (si la tienes)
-      queryText += ` WHERE (i.titulo ILIKE $1 OR i.direccion ILIKE $1) `;
-      queryParams.push(`%${q}%`); // Agregamos los comodines % para buscar parciales
+      conditions.push(`(i.titulo ILIKE $${queryParams.length + 1} OR i.direccion ILIKE $${queryParams.length + 1})`);
+      queryParams.push(`%${q}%`);
     }
 
-    // 3. Ordenamos: Primero los destacados, luego por fecha
-    queryText += ` ORDER BY i.es_destacado DESC, i.fecha_publicacion DESC`;
+    if (minPrice) {
+      conditions.push(`i.precio_mensual >= $${queryParams.length + 1}`);
+      queryParams.push(minPrice);
+    }
+
+    if (maxPrice) {
+      conditions.push(`i.precio_mensual <= $${queryParams.length + 1}`);
+      queryParams.push(maxPrice);
+    }
+
+    // Si hay condiciones, las unimos con AND
+    if (conditions.length > 0) {
+      queryText += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    // 3. Ordenamiento Dinámico
+    // Siempre ordenamos primero por destacados, luego por lo que elija el usuario
+    let orderBy = 'i.es_destacado DESC';
+
+    if (sort === 'price_asc') {
+      orderBy += ', i.precio_mensual ASC';
+    } else if (sort === 'price_desc') {
+      orderBy += ', i.precio_mensual DESC';
+    } else {
+      // Por defecto: fecha más reciente
+      orderBy += ', i.fecha_publicacion DESC';
+    }
+
+    queryText += ` ORDER BY ${orderBy}`;
 
     const result = await pool.query(queryText, queryParams);
     res.json(result.rows);
@@ -81,7 +105,7 @@ const createInmueble = async (req, res) => {
   const client = await pool.connect(); // Para usar una transacción
   try {
     // 1. Obtenemos los datos de texto de 'req.body'
-    const { titulo, descripcion, precio_mensual, direccion } = req.body;
+    const { titulo, descripcion, precio_mensual, direccion, es_destacado } = req.body;
     // 2. Obtenemos el ID del usuario del token
     const arrendador_id_seguro = req.user.userId;
 
@@ -114,9 +138,11 @@ const createInmueble = async (req, res) => {
     // 6. Iniciar Transacción SQL
     await client.query('BEGIN');
 
+    const isDestacadoBool = es_destacado === 'true' || es_destacado === true;
+
     // 7. Insertar el inmueble en la tabla 'inmuebles'
-    const inmuebleQuery = `INSERT INTO inmuebles (arrendador_id, titulo, descripcion, precio_mensual, direccion) VALUES ($1, $2, $3, $4, $5) RETURNING * `;
-    const inmuebleValues = [arrendador_id_seguro, titulo, descripcion, precio_mensual, direccion];
+    const inmuebleQuery = `INSERT INTO inmuebles (arrendador_id, titulo, descripcion, precio_mensual, direccion, es_destacado) VALUES ($1, $2, $3, $4, $5, $6) RETURNING * `;
+    const inmuebleValues = [arrendador_id_seguro, titulo, descripcion, precio_mensual, direccion, isDestacadoBool];
     const inmuebleResult = await client.query(inmuebleQuery, inmuebleValues);
     const newInmueble = inmuebleResult.rows[0];
 
@@ -144,12 +170,12 @@ const createInmueble = async (req, res) => {
 const updateInmueble = async (req, res) => {
   try {
     const { id } = req.params;
-    const { titulo, descripcion, precio_mensual, direccion, disponible } = req.body;
+    const { titulo, descripcion, precio_mensual, direccion, disponible, es_destacado } = req.body;
     const arrendador_id_seguro = req.user.userId;
 
     const result = await pool.query(
-      'UPDATE inmuebles SET titulo = $1, descripcion = $2, precio_mensual = $3, direccion = $4, disponible = $5 WHERE inmueble_id = $6 AND arrendador_id = $7 RETURNING *',
-      [titulo, descripcion, precio_mensual, direccion, disponible, id, arrendador_id_seguro]
+      'UPDATE inmuebles SET titulo = $1, descripcion = $2, precio_mensual = $3, direccion = $4, disponible = $5, es_destacado = $6 WHERE inmueble_id = $7 AND arrendador_id = $8 RETURNING *',
+      [titulo, descripcion, precio_mensual, direccion, disponible, es_destacado, id, arrendador_id_seguro]
     );
 
     if (result.rows.length === 0) {
